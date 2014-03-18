@@ -30,6 +30,7 @@ object MyCalendar
 		)
 		eventsVar(eventsVar.is :+ add)
 		
+		eventsVar.snapshot()
 		println("EVENTS BEFORE REFETCH: " + eventsVar)
 		
 		JqId("calendar") ~> JsFunc("fullCalendar", "refetchEvents")
@@ -54,7 +55,9 @@ object AjaxRequest
 	}
 }
 
-object eventsVar extends RequestVar[List[JsObj]](List(JsObj(
+case object MyTabGroup extends RequestVarSnapshotGroup
+
+object eventsVar extends SnapshotRequestVar[List[JsObj]](MyTabGroup, List(JsObj(
 			"title" -> "event 1", 
 			"start" -> (new Date).toString,
 			"end" -> (new Date).toString,
