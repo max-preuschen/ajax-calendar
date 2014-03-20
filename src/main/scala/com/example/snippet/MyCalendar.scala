@@ -6,21 +6,25 @@ import JsCmds._
 import jquery._
 import JqJE._
 import net.liftweb.http._
+import net.liftweb.http.SHtml._
 import net.liftweb.util.Helpers._
 import scala.xml._
 import java.util.Date
+import net.liftweb.http.S._
 
 object MyCalendar
 {
 	def render =
 	{
-		val calendarOptions = JsObj("events" -> Str(AjaxRequest.requestUrl))
-		
-		"#add [onclick]" #> SHtml.ajaxCall(Str("addEvent"), addEvent) &
-		"#calScript" #> Script(JqId("calendar") ~> JsFunc("fullCalendar", calendarOptions))
+		val calendarOptions = JsObj("events" -> JsVar("events"))
+		"#add [onclick]" #> SHtml.ajaxInvoke(addEvent) &		
+		"#calScript" #> Script(
+			SetExp(JsVar("events"), JsArray(eventsVar.is)) & 
+			JqId("calendar") ~> JsFunc("fullCalendar", calendarOptions)
+		)
 	}
 	
-	private def addEvent(s: String) = 
+	private def addEvent() = 
 	{
 		val add = JsObj(
 			"title" -> Str("event "+(eventsVar.is.length+1)), 
@@ -30,34 +34,14 @@ object MyCalendar
 		)
 		eventsVar(eventsVar.is :+ add)
 		
-		eventsVar.snapshot()
-		println("EVENTS BEFORE REFETCH: " + eventsVar)
-		
+		JqId("calendar") ~> JsFunc("fullCalendar", "removeEventSource", JsVar("events")) &
+        SetExp(JsVar("events"), JsArray(eventsVar.is)) &
+        JqId("calendar") ~> JsFunc("fullCalendar", "addEventSource", JsVar("events")) &
 		JqId("calendar") ~> JsFunc("fullCalendar", "refetchEvents")
 	}
 } 
 
-object AjaxRequest
-{
-	def requestUrl: String =
-	{
-		S.fmapFunc(S.SFuncHolder(getJson))
-		{
-			ajaxFunction => S.encodeURL(S.contextPath + "/" + LiftRules.ajaxPath + "?" + ajaxFunction)
-		}
-	}
-	
-	private def getJson(s: String) =
-	{
-		println("EVENTS DURING REFETCH: " + eventsVar)
-		
-		JsonResponse(JsArray(eventsVar.is))
-	}
-}
-
-case object MyTabGroup extends RequestVarSnapshotGroup
-
-object eventsVar extends SnapshotRequestVar[List[JsObj]](MyTabGroup, List(JsObj(
+object eventsVar extends RequestVar[List[JsObj]](List(JsObj(
 			"title" -> "event 1", 
 			"start" -> (new Date).toString,
 			"end" -> (new Date).toString,
